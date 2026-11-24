@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>TropVPN — Help Center</title>
+    <script>
+        (function () {
+            const theme = localStorage.getItem('trop-theme') || 'dark';
+            document.documentElement.dataset.theme = theme;
+            document.documentElement.style.colorScheme = theme;
+            document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#f4f4f4');
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="header">
+        <a href="index.html" class="brand">TropVPN<span class="brand-note">Help Center</span></a>
+        <nav class="navigation" id="navigation">
+            <span class="nav-slider" id="navSlider"></span>
+            <a href="#wiki" class="nav-link active" data-view="wiki">База знаний</a>
+            <a href="#updates" class="nav-link" data-view="updates">Пополнить</a>
+        </nav>
+        <button class="theme-button" id="themeToggle" aria-label="Сменить тему">
+            <svg id="themeIcon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M12 2V4M12 20V22M4.93 4.93L6.34 6.34M17.66 17.66L19.07 19.07M2 12H4M20 12H22M4.93 19.07L6.34 17.66M17.66 6.34L19.07 4.93" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+    </header>
+
+    <main class="site-content"><div id="mainContent"></div></main>
+
+    <footer class="site-footer">
+        <a href="index.html" class="footer-brand">TropVPN</a>
+        <a href="https://t.me/TropVPNbot" target="_blank" rel="noopener">ПОДДЕРЖКА ↗</a>
+        <a href="admin.html" class="admin-link">АДМИНИСТРИРОВАНИЕ ↗</a>
+    </footer>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="js/wiki.js"></script>
+</body>
+</html>
