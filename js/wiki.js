@@ -154,6 +154,7 @@ function openHeaderSearch() {
 function closeHeaderSearch() {
     headerCenter.classList.remove('search-open');
     searchToggle.setAttribute('aria-expanded', 'false');
+    searchInput.blur();
     searchInput.value = '';
     searchResults.innerHTML = '';
 }
