@@ -199,15 +199,13 @@ function renderBreadcrumbs(items = []) {
 
 function articleButton(article) {
     return '<button class="article-link" data-article="' + escapeHTML(article.id) + '">' +
-        '<span class="article-link-copy"><strong>' + escapeHTML(article.title) + '</strong><small>' + escapeHTML(article.summary || getPath(article)) + '</small></span>' +
-        '<span class="article-arrow">→</span></button>';
+        '<span class="article-link-copy"><strong>' + escapeHTML(article.title) + '</strong><small>' + escapeHTML(article.summary || getPath(article)) + '</small></span></button>';
 }
 
 /* DIRECTORY */
 function renderDirectoryContent() {
     setHeaderView('wiki');
     const topics = data.sections.map(section => {
-        const count = getArticles(section.id).length;
         const image = section.image
             ? '<img class="topic-card-image" src="' + escapeHTML(section.image) + '" alt="" aria-hidden="true" style="' +
                 '--image-x:' + (Number(section.imageX) || 0) + 'px;' +
@@ -222,14 +220,13 @@ function renderDirectoryContent() {
         return '<button class="topic-card' + (section.image ? ' has-image' : '') + '" data-topic="' + escapeHTML(section.id) + '">' +
             image +
             '<span class="topic-card-copy"><strong>' + escapeHTML(section.title) + '</strong>' +
-            '<span>' + escapeHTML(section.description || 'Инструкции и ответы на вопросы.') + '</span></span>' +
-            '<span class="topic-card-meta">' + count + ' ' + plural(count, 'статья', 'статьи', 'статей') + '</span></button>';
+            '<span>' + escapeHTML(section.description || 'Инструкции и ответы на вопросы.') + '</span></span></button>';
     }).join('');
 
     mainContent.innerHTML =
         '<section class="directory-intro"><h1>С чем помочь?</h1>' +
         '<p>Выбери тему — быстро найдём нужный ответ.</p></section>' +
-        '<section class="home-section topics-section"><div class="section-heading"><h2>Выбери тему</h2><span>' + data.sections.length + ' ТЕМ</span></div>' +
+        '<section class="home-section topics-section"><div class="section-heading"><h2>Выбери тему</h2></div>' +
         (topics ? '<div class="topic-grid">' + topics + '</div>' : '<div class="empty-state">Темы пока не добавлены.</div>') + '</section>';
 
     mainContent.querySelectorAll('[data-topic]').forEach(button => button.addEventListener('click', () => renderTopic(button.dataset.topic)));
@@ -241,7 +238,7 @@ function renderTopicContent(id) {
     setHeaderView('wiki');
     const articles = getArticles(id);
     mainContent.innerHTML = renderBreadcrumbs([section.title]) +
-        '<div class="content-heading"><div><h1>' + escapeHTML(section.title) + '</h1><p>' + escapeHTML(section.description || 'Статьи и инструкции по этой теме.') + '</p></div><button class="back-button" data-home>← Все темы</button></div>' +
+        '<div class="content-heading"><div><h1>' + escapeHTML(section.title) + '</h1><p>' + escapeHTML(section.description || 'Статьи и инструкции по этой теме.') + '</p></div></div>' +
         '<div class="article-link-list">' + (articles.length ? articles.map(article => articleButton(article)).join('') : '<div class="empty-state">В этой теме пока нет опубликованных статей.</div>') + '</div>';
     mainContent.querySelectorAll('[data-home]').forEach(button => button.addEventListener('click', renderDirectory));
     bindArticleButtons();
@@ -269,7 +266,11 @@ function renderMarkdown(source) {
     lines.forEach(line => {
         const value = line.trim();
         if (!value) { closeList(); return; }
-        if (value.startsWith('### ') || value.startsWith('## ')) {
+        const note = value.match(/^<div class="article-note"><strong>(.*?)<\/strong><br>(.*?)<\/div>$/);
+        if (note) {
+            closeList();
+            html.push('<aside class="article-note"><strong>' + escapeHTML(note[1]) + '</strong><p>' + inlineFormat(note[2]) + '</p></aside>');
+        } else if (value.startsWith('### ') || value.startsWith('## ')) {
             closeList();
             const level = value.startsWith('### ') ? 3 : 2;
             const title = value.slice(level + 1), anchor = 'heading-' + (++count);
@@ -294,27 +295,14 @@ function renderArticleContent(id) {
     const article = data.articles.find(item => item.id === id && item.status === 'published');
     if (!article) return;
     const rendered = renderMarkdown(article.content);
-    const toc = rendered.headings.length
-        ? '<aside class="article-toc"><div class="toc-heading">В ЭТОЙ СТАТЬЕ</div><nav>' +
-            rendered.headings.map((item, index) => '<a class="toc-link' + (!index ? ' active' : '') + '" href="#' + item.id + '">' + escapeHTML(item.title) + '</a>').join('') +
-          '</nav></aside>' : '';
 
     setHeaderView('wiki');
     mainContent.innerHTML = renderBreadcrumbs([getPath(article), article.title]) +
-        '<div class="reading-layout"><article class="reading-article"><button class="back-link" data-topic-back="' + escapeHTML(article.sectionId) + '">← К теме</button>' +
-        '<div class="article-meta">Обновлено ' + escapeHTML(article.updatedAt || 'недавно') + '</div>' +
+        '<div class="reading-layout"><article class="reading-article">' +
         '<h1>' + escapeHTML(article.title) + '</h1><p class="article-lead">' + escapeHTML(article.summary || '') + '</p>' +
-        '<div class="article-rule"></div><div class="article-body">' + rendered.html + '</div>' +
-        '<div class="article-bottom"><span>Статья была полезной?</span><div class="feedback-buttons"><button class="feedback-button" data-feedback="yes">Да</button><button class="feedback-button" data-feedback="no">Нет</button></div></div></article>' + toc + '</div>';
+        '<div class="article-rule"></div><div class="article-body">' + rendered.html + '</div></article></div>';
 
     mainContent.querySelectorAll('[data-home]').forEach(button => button.addEventListener('click', renderDirectory));
-    mainContent.querySelector('[data-topic-back]')?.addEventListener('click', event => renderTopic(event.currentTarget.dataset.topicBack));
-    mainContent.querySelectorAll('.toc-link').forEach(link => link.addEventListener('click', event => {
-        event.preventDefault();
-        document.getElementById(decodeURIComponent(link.getAttribute('href').slice(1)))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        mainContent.querySelectorAll('.toc-link').forEach(item => item.classList.toggle('active', item === link));
-    }));
-    mainContent.querySelectorAll('[data-feedback]').forEach(button => button.addEventListener('click', () => showToast('Спасибо за отзыв!')));
 }
 
 /* TOP UP */
@@ -367,7 +355,7 @@ function renderUpdatesContent() {
                     </section>
 
                     <button class="button button-dark topup-submit" id="topupSubmit" type="submit" disabled>
-                        Продолжить <span>→</span>
+                        Продолжить
                     </button>
                     <div class="topup-feedback" id="topupFeedback" role="status" hidden></div>
                 </div>
