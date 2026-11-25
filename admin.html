@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0a0a0a">
-    <title>TropVPN — Управление базой знаний</title>
+    <title>TropVPN - Управление базой знаний</title>
     <script>
         (function () {
             const theme = localStorage.getItem('trop-theme') || 'dark';
@@ -19,13 +19,13 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header class="header">
+    <header class="header admin-header">
         <a href="index.html" class="brand">TropVPN<span class="brand-note">Help Center</span></a>
         <nav class="navigation" id="navigation">
             <span class="nav-slider" id="navSlider"></span>
-            <button class="nav-link active" data-admin-tab="overview">Обзор</button>
-            <button class="nav-link" data-admin-tab="topics">Темы</button>
-            <button class="nav-link" data-admin-tab="articles">Статьи</button>
+            <button type="button" class="nav-link active" data-admin-tab="overview">Обзор</button>
+            <button type="button" class="nav-link" data-admin-tab="topics">Темы</button>
+            <button type="button" class="nav-link" data-admin-tab="articles">Статьи</button>
         </nav>
         <button class="theme-button" id="themeToggle" aria-label="Сменить тему">
             <svg id="themeIcon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M12 2V4M12 20V22M4.93 4.93L6.34 6.34M17.66 17.66L19.07 19.07M2 12H4M20 12H22M4.93 19.07L6.34 17.66M17.66 6.34L19.07 4.93" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>

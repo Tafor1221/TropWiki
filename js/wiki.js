@@ -94,9 +94,6 @@ const mainContent = document.getElementById('mainContent');
 const root = document.documentElement;
 const themeToggle = document.getElementById('themeToggle');
 const themeIcon = document.getElementById('themeIcon');
-const navigation = document.getElementById('navigation');
-const navSlider = document.getElementById('navSlider');
-const navLinks = Array.from(document.querySelectorAll('.nav-link'));
 
 function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 
@@ -119,34 +116,6 @@ function getArticles(sectionId) {
     return data.articles.filter(item => item.sectionId === sectionId && item.status === 'published');
 }
 function getPath(article) { return getSection(article.sectionId)?.title || 'Без темы'; }
-
-function moveNavSlider(link) {
-    if (!link) return;
-    const a = link.getBoundingClientRect();
-    const b = navigation.getBoundingClientRect();
-    const inset = parseFloat(getComputedStyle(navSlider).left) || 0;
-    navSlider.style.width = a.width + 'px';
-    navSlider.style.transform = 'translateX(' + (a.left - b.left - inset) + 'px)';
-}
-
-function setHeaderView(view) {
-    const key = view === 'updates' ? 'updates' : 'wiki';
-    navLinks.forEach(link => link.classList.toggle('active', link.dataset.view === key));
-    moveNavSlider(navLinks.find(link => link.dataset.view === key));
-}
-
-function switchView(view) {
-    if (view === 'updates') renderUpdates();
-    else renderDirectory();
-}
-
-navLinks.forEach(link => link.addEventListener('click', event => {
-    event.preventDefault();
-    switchView(link.dataset.view);
-    history.replaceState(null, '', link.dataset.view === 'updates' ? '#updates' : '#wiki');
-}));
-requestAnimationFrame(() => setHeaderView(location.hash === '#updates' ? 'updates' : 'wiki'));
-window.addEventListener('resize', () => moveNavSlider(navLinks.find(link => link.classList.contains('active'))));
 
 /* THEME */
 let theme = localStorage.getItem('trop-theme') || 'dark';
@@ -183,13 +152,6 @@ themeToggle.addEventListener('click', () => {
 });
 
 /* HELPERS */
-function plural(number, one, few, many) {
-    const n = Math.abs(number) % 100, last = n % 10;
-    if (n > 10 && n < 20) return many;
-    if (last > 1 && last < 5) return few;
-    return last === 1 ? one : many;
-}
-
 function renderBreadcrumbs(items = []) {
     return '<div class="breadcrumbs"><button class="breadcrumb-button" data-home>База знаний</button>' +
         items.map((item, index) => '<span class="breadcrumb-separator">/</span>' +
@@ -204,7 +166,6 @@ function articleButton(article) {
 
 /* DIRECTORY */
 function renderDirectoryContent() {
-    setHeaderView('wiki');
     const topics = data.sections.map(section => {
         const image = section.image
             ? '<img class="topic-card-image" src="' + escapeHTML(section.image) + '" alt="" aria-hidden="true" style="' +
@@ -225,7 +186,7 @@ function renderDirectoryContent() {
 
     mainContent.innerHTML =
         '<section class="directory-intro"><h1>С чем помочь?</h1>' +
-        '<p>Выбери тему — быстро найдём нужный ответ.</p></section>' +
+        '<p>Выбери тему - быстро найдём нужный ответ.</p></section>' +
         '<section class="home-section topics-section"><div class="section-heading"><h2>Выбери тему</h2></div>' +
         (topics ? '<div class="topic-grid">' + topics + '</div>' : '<div class="empty-state">Темы пока не добавлены.</div>') + '</section>';
 
@@ -235,7 +196,6 @@ function renderDirectoryContent() {
 function renderTopicContent(id) {
     const section = getSection(id);
     if (!section) return;
-    setHeaderView('wiki');
     const articles = getArticles(id);
     mainContent.innerHTML = renderBreadcrumbs([section.title]) +
         '<div class="content-heading"><div><h1>' + escapeHTML(section.title) + '</h1><p>' + escapeHTML(section.description || 'Статьи и инструкции по этой теме.') + '</p></div></div>' +
@@ -296,7 +256,6 @@ function renderArticleContent(id) {
     if (!article) return;
     const rendered = renderMarkdown(article.content);
 
-    setHeaderView('wiki');
     mainContent.innerHTML = renderBreadcrumbs([getPath(article), article.title]) +
         '<div class="reading-layout"><article class="reading-article">' +
         '<h1>' + escapeHTML(article.title) + '</h1><p class="article-lead">' + escapeHTML(article.summary || '') + '</p>' +
@@ -304,131 +263,6 @@ function renderArticleContent(id) {
 
     mainContent.querySelectorAll('[data-home]').forEach(button => button.addEventListener('click', renderDirectory));
 }
-
-/* TOP UP */
-function renderUpdatesContent() {
-    setHeaderView('updates');
-    mainContent.innerHTML = `
-        <section class="updates-page">
-            <div class="updates-heading">
-                <h1>Пополнить баланс</h1>
-                <p>Укажи получателя, сумму и способ оплаты.</p>
-            </div>
-
-            <form class="topup-layout" id="topupForm" novalidate>
-                <div class="topup-form-card panel">
-                    <label class="topup-field">
-                        <span>Telegram username</span>
-                        <div class="topup-username-wrap">
-                            <span>@</span>
-                            <input id="topupUsername" type="text" maxlength="33" autocomplete="off"
-                                autocapitalize="none" spellcheck="false" placeholder="username">
-                        </div>
-                    </label>
-
-                    <section class="topup-section">
-                        <label class="topup-field topup-custom-amount">
-                            <span>Сумма пополнения</span>
-                            <div class="topup-money-wrap">
-                                <input id="topupCustomAmount" type="number" min="50" max="100000" step="1" inputmode="numeric" placeholder="От 50">
-                                <span>₽</span>
-                            </div>
-                        </label>
-                    </section>
-
-                    <section class="topup-section">
-                        <div class="topup-section-heading"><h2>Способ оплаты</h2></div>
-                        <div class="topup-payment-grid">
-                            <label class="topup-payment-option">
-                                <input type="radio" name="topupMethod" value="cryptobot">
-                                <img class="topup-payment-icon" src="assets/cryptobot.webp" alt="">
-                                <span class="topup-payment-copy"><strong>CryptoBot</strong></span>
-                                <span class="topup-payment-check"></span>
-                            </label>
-                            <label class="topup-payment-option is-disabled" aria-disabled="true">
-                                <input type="radio" name="topupMethod" value="sbp" disabled>
-                                <img class="topup-payment-icon topup-payment-icon-sbp" src="assets/sbp-sign.png" alt="">
-                                <span class="topup-payment-copy"><strong>СБП</strong></span>
-                                <span class="topup-payment-status">В разработке</span>
-                            </label>
-                        </div>
-                    </section>
-
-                    <button class="button button-dark topup-submit" id="topupSubmit" type="submit" disabled>
-                        Продолжить
-                    </button>
-                    <div class="topup-feedback" id="topupFeedback" role="status" hidden></div>
-                </div>
-            </form>
-        </section>`;
-
-    bindTopupForm();
-}
-
-function bindTopupForm() {
-    const form = document.getElementById('topupForm');
-    const usernameInput = document.getElementById('topupUsername');
-    const customAmountInput = document.getElementById('topupCustomAmount');
-    const methodInputs = Array.from(form.querySelectorAll('[name="topupMethod"]'));
-    const submit = document.getElementById('topupSubmit');
-    const feedback = document.getElementById('topupFeedback');
-
-    function getUsername() {
-        return usernameInput.value.trim().replace(/^@/, '');
-    }
-
-    function getAmount() {
-        return Number(customAmountInput.value);
-    }
-
-    function updateTopupState() {
-        const username = getUsername();
-        const amount = getAmount();
-        const method = methodInputs.find(input => input.checked)?.value || '';
-        const validUsername = /^[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(username);
-        const validAmount = Number.isInteger(amount) && amount >= 50 && amount <= 100000;
-
-        submit.disabled = !(validUsername && validAmount && method);
-
-        form.querySelectorAll('.topup-payment-option').forEach(option => {
-            option.classList.toggle('selected', option.querySelector('input').checked);
-        });
-        return { username, amount, method, validUsername, validAmount };
-    }
-
-    customAmountInput.addEventListener('input', () => {
-        feedback.hidden = true;
-        updateTopupState();
-    });
-    usernameInput.addEventListener('input', () => {
-        feedback.hidden = true;
-        updateTopupState();
-    });
-    methodInputs.forEach(input => input.addEventListener('change', () => {
-        feedback.hidden = true;
-        updateTopupState();
-    }));
-
-    form.addEventListener('submit', event => {
-        event.preventDefault();
-        const details = updateTopupState();
-        if (!details.validUsername) {
-            feedback.textContent = 'Проверь username: он должен содержать от 5 до 32 символов — латинские буквы, цифры или _.';
-        } else if (!details.validAmount) {
-            feedback.textContent = 'Минимальная сумма — 50 ₽. Укажи целое число до 100 000 ₽.';
-        } else if (!details.method) {
-            feedback.textContent = 'Выбери способ оплаты.';
-        } else {
-            feedback.textContent = 'Форма заполнена. Создание платёжной ссылки подключим следующим этапом — оплата пока не запускается.';
-        }
-        feedback.hidden = false;
-    });
-
-    updateTopupState();
-}
-
-/* UPDATES */
-
 
 function transitionPage(update) {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -455,9 +289,18 @@ function renderArticle(id) {
     transitionPage(() => renderArticleContent(id));
 }
 
-function renderUpdates() {
-    transitionPage(renderUpdatesContent);
+async function initializeWiki() {
+    try {
+        const response = await fetch('api.php', { cache: 'no-store' });
+        const result = await response.json();
+        if (response.ok && result.ok && result.initialized && result.data) {
+            data = normalizeData(result.data);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+    } catch (error) {
+        console.warn('Серверная база знаний недоступна, используется локальная копия:', error);
+    }
+    renderDirectoryContent();
 }
 
-if (location.hash === '#updates') renderUpdatesContent();
-else renderDirectoryContent();
+initializeWiki();

@@ -92,9 +92,79 @@ const pages = {
     editor: document.getElementById('editorPage')
 };
 
-function saveData() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-    catch (error) { console.error('Ошибка сохранения wiki:', error); showToast('Не удалось сохранить данные'); }
+function getAdminKey() {
+    let key = sessionStorage.getItem('trop-wiki-admin-key');
+    if (!key) {
+        key = window.prompt('Введи ключ администратора из файла data/config.php');
+        if (key) sessionStorage.setItem('trop-wiki-admin-key', key.trim());
+    }
+    return (key || '').trim();
+}
+
+async function saveData() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (error) {
+        console.error('Не удалось сохранить локальную копию wiki:', error);
+    }
+
+    const key = getAdminKey();
+    if (!key) {
+        showToast('Сохранение отменено: нужен ключ администратора');
+        return false;
+    }
+
+    try {
+        const response = await fetch('api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Key': key
+            },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+            if (response.status === 403) sessionStorage.removeItem('trop-wiki-admin-key');
+            throw new Error(result.error || 'Не удалось сохранить базу знаний');
+        }
+        return true;
+    } catch (error) {
+        console.error('Ошибка сохранения базы знаний:', error);
+        showToast('Не удалось сохранить в Wiki/data. Проверь PHP и права папки data');
+        return false;
+    }
+}
+
+async function initializeRemoteData() {
+    try {
+        const key = getAdminKey();
+        if (!key) return;
+        const response = await fetch('api.php', {
+            cache: 'no-store',
+            headers: { 'X-Admin-Key': key }
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+            if (response.status === 403) sessionStorage.removeItem('trop-wiki-admin-key');
+            throw new Error(result.error || 'API недоступен');
+        }
+
+        if (result.initialized && result.data) {
+            data = normalizeData(result.data);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            refreshAll();
+            return;
+        }
+
+        if (await saveData()) {
+            showToast('База знаний подключена. Данные перенесены на сервер');
+            refreshAll();
+        }
+    } catch (error) {
+        console.error('Не удалось загрузить серверную базу знаний:', error);
+        showToast('Не удалось подключиться к Wiki/data. Проверь PHP на хостинге');
+    }
 }
 
 function escapeHTML(value) {
@@ -155,7 +225,7 @@ themeToggle.addEventListener('click', () => {
 
 /* NAVIGATION */
 function moveSlider(link) {
-    if (!link) return;
+    if (!link || !navigation || !navSlider) return;
     const a = link.getBoundingClientRect(), b = navigation.getBoundingClientRect();
     const inset = parseFloat(getComputedStyle(navSlider).left) || 0;
     navSlider.style.width = a.width + 'px';
@@ -431,7 +501,7 @@ document.getElementById('addTopic').addEventListener('click', () => openTopic())
 document.getElementById('closeTopic').addEventListener('click', closeTopic);
 document.getElementById('cancelTopic').addEventListener('click', closeTopic);
 
-topicForm.addEventListener('submit', event => {
+topicForm.addEventListener('submit', async event => {
     event.preventDefault();
     const title = topicName.value.trim();
     const description = topicDescription.value.trim();
@@ -448,19 +518,24 @@ topicForm.addEventListener('submit', event => {
         imageHoverSize: hoverImageSettings.size,
         imageHoverRotation: hoverImageSettings.rotation
     };
+    const previous = clone(data);
     const existing = getTopic(topicId.value);
     if (existing) {
         Object.assign(existing, { title, description }, imageData);
     } else {
         data.sections.push({ id: makeId('topic'), title, description, ...imageData });
     }
-    saveData();
+    if (!await saveData()) {
+        data = previous;
+        refreshAll();
+        return;
+    }
     closeTopic();
     refreshAll();
     showToast(existing ? 'Тема обновлена' : 'Тема создана');
 });
 
-function deleteTopic(id) {
+async function deleteTopic(id) {
     const topic = getTopic(id);
     if (!topic) return;
     const count = getArticles(id).length;
@@ -469,8 +544,13 @@ function deleteTopic(id) {
         return;
     }
     if (!confirm('Удалить тему «' + topic.title + '»?')) return;
+    const previous = clone(data);
     data.sections = data.sections.filter(item => item.id !== id);
-    saveData();
+    if (!await saveData()) {
+        data = previous;
+        refreshAll();
+        return;
+    }
     refreshAll();
     showToast('Тема удалена');
 }
@@ -492,11 +572,16 @@ function renderArticles(query = '') {
     container.querySelectorAll('[data-edit-article]').forEach(button => button.addEventListener('click', () => openEditor(data.articles.find(item => item.id === button.dataset.editArticle))));
     container.querySelectorAll('[data-delete-article]').forEach(button => button.addEventListener('click', () => deleteArticle(button.dataset.deleteArticle)));
 }
-function deleteArticle(id) {
+async function deleteArticle(id) {
     const article = data.articles.find(item => item.id === id);
     if (!article || !confirm('Удалить статью «' + article.title + '»?')) return;
+    const previous = clone(data);
     data.articles = data.articles.filter(item => item.id !== id);
-    saveData();
+    if (!await saveData()) {
+        data = previous;
+        refreshAll();
+        return;
+    }
     refreshAll();
     showToast('Статья удалена');
 }
@@ -551,7 +636,7 @@ function updatePreview() {
 [articleTitle, articleSummary, articleTags, articleContent].forEach(input => input.addEventListener('input', updatePreview));
 articleTopic.addEventListener('change', updatePreview);
 
-form.addEventListener('submit', event => {
+form.addEventListener('submit', async event => {
     event.preventDefault();
     const title = articleTitle.value.trim();
     const summary = articleSummary.value.trim();
@@ -570,9 +655,14 @@ form.addEventListener('submit', event => {
         createdAt: existing?.createdAt || formatDate(),
         updatedAt: formatDate()
     };
+    const previous = clone(data);
     if (existing) data.articles = data.articles.map(item => item.id === id ? article : item);
     else data.articles.unshift(article);
-    saveData();
+    if (!await saveData()) {
+        data = previous;
+        refreshAll();
+        return;
+    }
     refreshAll();
     switchTab('articles');
     showToast(existing ? 'Статья обновлена' : 'Статья создана');
@@ -586,3 +676,4 @@ function refreshAll() {
     renderArticles(document.getElementById('articleSearch').value || '');
 }
 refreshAll();
+initializeRemoteData();

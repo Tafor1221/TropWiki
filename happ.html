@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111713">
+    <title>Открываем Happ · TropVPN</title>
+    <style>
+        :root { color-scheme: dark; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            color: #edf5ef;
+            background: radial-gradient(circle at 50% 0, #20382a 0, #111713 48%, #0b0f0c 100%);
+        }
+        main {
+            width: min(100%, 420px);
+            padding: 30px;
+            border: 1px solid #314638;
+            border-radius: 22px;
+            background: rgba(18, 27, 21, .94);
+            box-shadow: 0 24px 80px rgba(0,0,0,.35);
+            text-align: center;
+        }
+        .mark { font-size: 38px; margin-bottom: 14px; }
+        h1 { margin: 0 0 10px; font-size: 23px; }
+        p { color: #aab9ae; line-height: 1.55; margin: 0 0 22px; }
+        a, button {
+            display: block;
+            width: 100%;
+            border: 0;
+            border-radius: 12px;
+            padding: 14px 18px;
+            font: inherit;
+            font-weight: 650;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        a { color: #102017; background: #a6e3b0; }
+        button { margin-top: 10px; color: #e5eee7; background: #26362b; }
+        .hint { display: none; margin-top: 18px; font-size: 13px; color: #8fa095; }
+        .hint.visible { display: block; }
+        .error { color: #ffb4a9; }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="mark">🌴</div>
+        <h1 id="title">Открываем Happ</h1>
+        <p id="status">Передаём ссылку подписки в приложение.</p>
+        <a id="open" href="#">Открыть Happ</a>
+        <button id="copy" type="button">Скопировать ссылку</button>
+        <div class="hint" id="hint">Если Happ не открылся автоматически, нажми «Открыть Happ» ещё раз.</div>
+    </main>
+    <script>
+        (() => {
+            const params = new URLSearchParams(window.location.search);
+            const target = params.get("target") || "";
+            const subscription = target.startsWith("happ://add/")
+                ? target.slice("happ://add/".length)
+                : "";
+            const allowed = subscription.startsWith("https://");
+
+            const title = document.getElementById("title");
+            const status = document.getElementById("status");
+            const open = document.getElementById("open");
+            const copy = document.getElementById("copy");
+            const hint = document.getElementById("hint");
+
+            if (!allowed) {
+                title.textContent = "Ссылка не найдена";
+                status.textContent = "Вернись в TropVPN и открой кнопку Happ ещё раз.";
+                status.classList.add("error");
+                open.hidden = true;
+                copy.hidden = true;
+                return;
+            }
+
+            open.href = target;
+            copy.addEventListener("click", async () => {
+                try {
+                    await navigator.clipboard.writeText(subscription);
+                    copy.textContent = "Ссылка скопирована";
+                } catch {
+                    copy.textContent = "Не удалось скопировать";
+                }
+            });
+
+            window.setTimeout(() => hint.classList.add("visible"), 1200);
+            window.location.href = target;
+        })();
+    </script>
+</body>
+</html>
